@@ -2,8 +2,7 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    flex-wrap: nowrap;
-    overflow-x: auto;
+    flex-wrap: wrap;
 }
 
 .toolbar-btn {

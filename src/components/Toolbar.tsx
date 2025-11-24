@@ -130,15 +130,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 </button>
             </div>
 
-
-            {activeObject && (
-                <>
-                    <div className="divider"></div>
-                    <button className="btn btn-danger toolbar-btn-icon" onClick={onDeleteObject} title="Delete">
-                        <Trash2 size={20} />
-                    </button>
-                </>
-            )}
+            <div className="divider"></div>
+            <button
+                className="btn btn-danger toolbar-btn-icon"
+                onClick={onDeleteObject}
+                title="Delete"
+                disabled={!activeObject}
+            >
+                <Trash2 size={20} />
+            </button>
 
             <div className="divider"></div>
 
