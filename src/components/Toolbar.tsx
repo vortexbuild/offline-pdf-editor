@@ -11,7 +11,6 @@ interface ToolbarProps {
     onDeleteObject: () => void;
     onClose: () => void;
     onSaveToStorage: () => void;
-    hasUnsavedChanges: boolean;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -22,8 +21,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     onUpdateObject,
     onDeleteObject,
     onClose,
-    onSaveToStorage,
-    hasUnsavedChanges
+    onSaveToStorage
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
