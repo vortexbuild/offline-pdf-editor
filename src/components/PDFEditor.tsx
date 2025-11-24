@@ -284,7 +284,7 @@ export const PDFEditor: React.FC = () => {
         const text = new Textbox('Enter text', {
             left: 100,
             top: 100,
-            fontFamily: 'Inter',
+            fontFamily: 'Helvetica',
             fill: '#000000',
             fontSize: 20,
             width: 200,
