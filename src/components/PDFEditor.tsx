@@ -383,26 +383,25 @@ export const PDFEditor: React.FC = () => {
             alert('Document saved successfully!');
         } catch (error) {
             console.error("Error saving to storage:", error);
-            alert("Failed to save document.");
+            alert(`Failed to save document: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw error; // propagate to caller
         }
     };
 
-    const handleClose = () => {
+    const handleClose = async () => {
         if (hasUnsavedChanges) {
             if (confirm('You have unsaved changes. Do you want to save before closing?')) {
-                handleSaveToStorage()
-                    .then(() => {
+                try {
+                    await handleSaveToStorage();
+                    setPdfDocument(null);
+                    setHasUnsavedChanges(false);
+                } catch (error) {
+                    console.error('Failed to save during close:', error);
+                    if (confirm('Failed to save document. Close anyway without saving?')) {
                         setPdfDocument(null);
                         setHasUnsavedChanges(false);
-                    })
-                    .catch((error) => {
-                        console.error('Failed to save:', error);
-                        // Ask if they want to close anyway
-                        if (confirm('Failed to save document. Close anyway without saving?')) {
-                            setPdfDocument(null);
-                            setHasUnsavedChanges(false);
-                        }
-                    });
+                    }
+                }
             } else {
                 setPdfDocument(null);
                 setHasUnsavedChanges(false);
