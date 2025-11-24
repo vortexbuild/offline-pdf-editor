@@ -286,7 +286,7 @@ export const PDFEditor: React.FC = () => {
             top: 100,
             fontFamily: 'Helvetica',
             fill: '#000000',
-            fontSize: 20,
+            fontSize: 14,
             width: 200,
             splitByGrapheme: true,
             lockScalingY: true,
