@@ -4,6 +4,7 @@ import { Canvas, FabricImage, Textbox } from 'fabric';
 import { PDFUploader } from './PDFUploader';
 import { PageCanvas } from './PageCanvas';
 import { Toolbar } from './Toolbar';
+import { RecentDocs } from './RecentDocs';
 import { loadPDF, savePDF } from '../utils/pdfUtils';
 import './PDFEditor.css';
 
@@ -16,6 +17,7 @@ export const PDFEditor: React.FC = () => {
     const [activeObject, setActiveObject] = useState<any>(null);
     const [originalFileName, setOriginalFileName] = useState<string>('document.pdf');
     const lastMousePos = React.useRef<{ x: number, y: number }>({ x: 100, y: 100 });
+    const [activeTab, setActiveTab] = useState<'upload' | 'recent'>('upload');
 
     // History Management
     const undoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
@@ -100,6 +102,13 @@ export const PDFEditor: React.FC = () => {
     const handleFileSelect = async (file: File) => {
         try {
             setOriginalFileName(file.name);
+
+            // Add to recent docs
+            const recentDocs = JSON.parse(localStorage.getItem('recentDocs') || '[]');
+            const newDoc = { name: file.name, timestamp: Date.now() };
+            const updated = [newDoc, ...recentDocs.filter((d: any) => d.name !== file.name)].slice(0, 10);
+            localStorage.setItem('recentDocs', JSON.stringify(updated));
+
             const arrayBuffer = await file.arrayBuffer();
             setOriginalPdfBytes(arrayBuffer);
 
@@ -364,7 +373,27 @@ export const PDFEditor: React.FC = () => {
         return (
             <div className="container">
                 <h1 className="app-title">Offline PDF Editor</h1>
-                <PDFUploader onFileSelect={handleFileSelect} />
+
+                <div className="tabs">
+                    <button
+                        className={`tab ${activeTab === 'upload' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('upload')}
+                    >
+                        Upload PDF
+                    </button>
+                    <button
+                        className={`tab ${activeTab === 'recent' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('recent')}
+                    >
+                        Recent
+                    </button>
+                </div>
+
+                {activeTab === 'upload' ? (
+                    <PDFUploader onFileSelect={handleFileSelect} />
+                ) : (
+                    <RecentDocs onFileSelect={handleFileSelect} />
+                )}
             </div>
         );
     }
