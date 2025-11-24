@@ -61,7 +61,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     value={activeObject?.fontFamily || 'Helvetica'}
                     onChange={(e) => onUpdateObject('fontFamily', e.target.value)}
                     title="Font Family"
-                    disabled={!isText}
                 >
                     <option value="Helvetica">Helvetica</option>
                     <option value="Times New Roman">Times New Roman</option>
@@ -81,7 +80,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     min={8}
                     max={72}
                     title="Font Size"
-                    disabled={!isText}
                 />
                 <input
                     type="color"
@@ -89,14 +87,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     value={activeObject?.fill as string || '#000000'}
                     onChange={(e) => onUpdateObject('fill', e.target.value)}
                     title="Text Color"
-                    disabled={!isText}
                 />
 
                 <button
                     className={`btn btn-icon ${activeObject?.fontWeight === 'bold' ? 'active' : ''}`}
                     onClick={() => onUpdateObject('fontWeight', activeObject?.fontWeight === 'bold' ? 'normal' : 'bold')}
                     title="Bold"
-                    disabled={!isText}
                 >
                     <Bold size={16} />
                 </button>
@@ -105,7 +101,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     className={`btn btn-icon ${activeObject?.fontStyle === 'italic' ? 'active' : ''}`}
                     onClick={() => onUpdateObject('fontStyle', activeObject?.fontStyle === 'italic' ? 'normal' : 'italic')}
                     title="Italic"
-                    disabled={!isText}
                 >
                     <Italic size={16} />
                 </button>
@@ -114,7 +109,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     className={`btn btn-icon ${activeObject?.underline ? 'active' : ''}`}
                     onClick={() => onUpdateObject('underline', !activeObject?.underline)}
                     title="Underline"
-                    disabled={!isText}
                 >
                     <Underline size={16} />
                 </button>
@@ -124,7 +118,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     className={`btn btn-icon ${activeObject?.script === 'super' ? 'active' : ''}`}
                     onClick={() => onUpdateObject('script', activeObject?.script === 'super' ? 'normal' : 'super')}
                     title="Superscript"
-                    disabled={!isText}
                 >
                     <Superscript size={16} />
                 </button>
@@ -132,7 +125,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     className={`btn btn-icon ${activeObject?.script === 'sub' ? 'active' : ''}`}
                     onClick={() => onUpdateObject('script', activeObject?.script === 'sub' ? 'normal' : 'sub')}
                     title="Subscript"
-                    disabled={!isText}
                 >
                     <Subscript size={16} />
                 </button>
