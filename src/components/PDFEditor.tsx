@@ -390,10 +390,19 @@ export const PDFEditor: React.FC = () => {
     const handleClose = () => {
         if (hasUnsavedChanges) {
             if (confirm('You have unsaved changes. Do you want to save before closing?')) {
-                handleSaveToStorage().then(() => {
-                    setPdfDocument(null);
-                    setHasUnsavedChanges(false);
-                });
+                handleSaveToStorage()
+                    .then(() => {
+                        setPdfDocument(null);
+                        setHasUnsavedChanges(false);
+                    })
+                    .catch((error) => {
+                        console.error('Failed to save:', error);
+                        // Ask if they want to close anyway
+                        if (confirm('Failed to save document. Close anyway without saving?')) {
+                            setPdfDocument(null);
+                            setHasUnsavedChanges(false);
+                        }
+                    });
             } else {
                 setPdfDocument(null);
                 setHasUnsavedChanges(false);
