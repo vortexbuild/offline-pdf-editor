@@ -36,6 +36,10 @@ export const RecentDocs: React.FC<RecentDocsProps> = ({ onFileSelect }) => {
         return date.toLocaleDateString();
     };
 
+    const handleDocClick = (docName: string) => {
+        alert(`To edit "${docName}", please upload it again from the Upload PDF tab.\n\nNote: This app runs entirely in your browser and doesn't store your files.`);
+    };
+
     if (recentDocs.length === 0) {
         return (
             <div className="recent-docs-empty">
@@ -49,7 +53,7 @@ export const RecentDocs: React.FC<RecentDocsProps> = ({ onFileSelect }) => {
     return (
         <div className="recent-docs-list">
             {recentDocs.map((doc, index) => (
-                <div key={index} className="recent-doc-item">
+                <div key={index} className="recent-doc-item" onClick={() => handleDocClick(doc.name)}>
                     <FileText size={24} />
                     <div className="recent-doc-info">
                         <span className="recent-doc-name">{doc.name}</span>
