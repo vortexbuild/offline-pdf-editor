@@ -1,0 +1,16 @@
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.toolbar-btn {
+    min-width: 100px;
+}
+
+.divider {
+    width: 1px;
+    height: 24px;
+    background-color: var(--border);
+    margin: 0 0.5rem;
+}
