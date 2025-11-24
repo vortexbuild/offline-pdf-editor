@@ -15,6 +15,86 @@ export const PDFEditor: React.FC = () => {
     const [activePageIndex, setActivePageIndex] = useState<number>(0);
     const [activeObject, setActiveObject] = useState<any>(null);
 
+    // History Management
+    const undoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
+    const redoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
+
+    const saveState = (pageIndex: number) => {
+        const canvas = fabricCanvases[pageIndex];
+        if (!canvas) return;
+
+        const json = canvas.toObject(['id', 'selectable', 'lockUniScaling', 'lockScalingX', 'lockScalingY', 'script', 'fontFamily', 'fontSize', 'fill', 'fontWeight', 'fontStyle', 'underline']);
+        undoStack.current.push({ pageIndex, json });
+        redoStack.current = []; // Clear redo stack on new action
+    };
+
+    const handleUndo = () => {
+        if (undoStack.current.length === 0) return;
+        const lastState = undoStack.current.pop();
+        if (!lastState) return;
+
+        const canvas = fabricCanvases[lastState.pageIndex];
+        if (!canvas) return;
+
+        // Save current state to redo stack before undoing
+        const currentJson = canvas.toObject(['id', 'selectable', 'lockUniScaling', 'lockScalingX', 'lockScalingY', 'script', 'fontFamily', 'fontSize', 'fill', 'fontWeight', 'fontStyle', 'underline']);
+        redoStack.current.push({ pageIndex: lastState.pageIndex, json: currentJson });
+
+        canvas.loadFromJSON(lastState.json, () => {
+            canvas.requestRenderAll();
+            // Re-bind events if necessary? Fabric usually handles this.
+            // But we might lose active object selection
+            setActiveObject(null);
+        });
+    };
+
+    const handleRedo = () => {
+        if (redoStack.current.length === 0) return;
+        const nextState = redoStack.current.pop();
+        if (!nextState) return;
+
+        const canvas = fabricCanvases[nextState.pageIndex];
+        if (!canvas) return;
+
+        // Save current state to undo stack before redoing
+        const currentJson = canvas.toObject(['id', 'selectable', 'lockUniScaling', 'lockScalingX', 'lockScalingY', 'script', 'fontFamily', 'fontSize', 'fill', 'fontWeight', 'fontStyle', 'underline']);
+        undoStack.current.push({ pageIndex: nextState.pageIndex, json: currentJson });
+
+        canvas.loadFromJSON(nextState.json, () => {
+            canvas.requestRenderAll();
+            setActiveObject(null);
+        });
+    };
+
+    // Keyboard Shortcuts
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if input/textarea is focused
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) return;
+
+            if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    handleRedo();
+                } else {
+                    handleUndo();
+                }
+            } else if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+                e.preventDefault();
+                handleRedo();
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                // Only delete if canvas has active object
+                const canvas = fabricCanvases[activePageIndex];
+                if (canvas && canvas.getActiveObject()) {
+                    handleDeleteObject();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [fabricCanvases, activePageIndex]); // Re-bind when canvases change to ensure we have latest refs
+
     const handleFileSelect = async (file: File) => {
         try {
             const arrayBuffer = await file.arrayBuffer();
@@ -57,9 +137,72 @@ export const PDFEditor: React.FC = () => {
         canvas.on('selection:cleared', () => {
             setActiveObject(null);
         });
+
+        // Capture state for history
+        canvas.on('object:modified', () => {
+            // We need to save state BEFORE modification? 
+            // Actually, usually we save state on 'object:modified' which is AFTER.
+            // But for undo, we need the state BEFORE.
+            // Strategy: Save state on 'mouse:down' if target exists? Or 'object:moving'?
+            // Better: Save state to undo stack *before* applying changes?
+            // Standard way: 
+            // 1. On 'object:modified', push the *previous* state? No, that's hard to track.
+            // 2. Push current state to undo stack *before* making a change.
+            // 3. When 'object:modified' fires, it means a change happened.
+
+            // Let's try: Save state on 'mouse:down' if we hit an object?
+            // But we don't know if it will be modified.
+
+            // Alternative: Snapshot the whole page on every 'object:modified'.
+            // Then Undo pops the previous snapshot.
+            // But we need the snapshot *before* the modification.
+
+            // Let's use 'before:transform' to capture state?
+        });
+
+        // Let's simplify: 
+        // We need to save the state *before* a change happens.
+        // For add/delete, we call saveState() manually before the action.
+        // For modifications (drag/resize), we can hook into 'object:modified'.
+        // But 'object:modified' is post-facto.
+        // So we need to capture state when an object *starts* being modified.
+        // 'object:modified' gives us the end result.
+        // If we save state on 'object:modified', we are saving the *new* state.
+        // That's wrong for Undo. Undo needs the *old* state.
+
+        // Correct approach:
+        // 1. On 'object:modified', we want to be able to go back.
+        // So we should have saved the state *before* the modification started.
+        // We can save state on 'mouse:down' or 'object:selected'? Too frequent.
+
+        // Let's try this:
+        // Keep a 'currentState' ref for the active page.
+        // When 'object:modified' happens, push 'currentState' to undoStack, then update 'currentState'.
+        // But we have multiple pages.
+
+        // Let's just use a simple approach:
+        // On 'object:modified', we assume the *previous* state is lost unless we saved it.
+        // So we must save on 'before:transform' or similar?
+        // Fabric has 'object:modified'.
+
+        // Let's try saving state *before* we perform actions in our handlers (add/delete/update).
+        // For drag/resize (canvas interactions), we need to hook into canvas events.
+
+        // Let's use a temp variable to store state on 'mouse:down' or 'transform:start'?
+        // 'before:transform' is good.
+
+        canvas.on('before:transform', () => {
+            saveState(pageIndex);
+        });
+
+        // Also need to handle 'text:editing:entered' -> save state?
+        // 'text:changed' -> save state?
+
     }, []);
 
     const handleUpdateObject = (key: string, value: any) => {
+        saveState(activePageIndex); // Save before update
+
         // Find the canvas that has an active object
         let canvas = fabricCanvases[activePageIndex];
         let activeObj = canvas?.getActiveObject();
@@ -120,6 +263,7 @@ export const PDFEditor: React.FC = () => {
     };
 
     const handleDeleteObject = () => {
+        saveState(activePageIndex); // Save before delete
         const canvas = fabricCanvases[activePageIndex];
         if (!canvas) return;
 
@@ -133,6 +277,7 @@ export const PDFEditor: React.FC = () => {
     };
 
     const handleAddText = () => {
+        saveState(activePageIndex); // Save before add
         const canvas = fabricCanvases[activePageIndex];
         if (!canvas) return;
 
@@ -166,6 +311,7 @@ export const PDFEditor: React.FC = () => {
     };
 
     const handleAddSignature = async (file: File) => {
+        saveState(activePageIndex); // Save before add
         const canvas = fabricCanvases[activePageIndex];
         if (!canvas) return;
 
