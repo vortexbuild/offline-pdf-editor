@@ -56,4 +56,4 @@ A secure, offline-first PDF editor built with React, Vite, and Fabric.js. This a
 
 ## License
 
-MIT
+GNU GPLv3

@@ -32,7 +32,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         }
     };
 
-    const isText = activeObject && (activeObject.type === 'i-text' || activeObject.type === 'text');
+    // const isText = activeObject && (activeObject.type === 'i-text' || activeObject.type === 'text' || activeObject.type === 'textbox');
 
     return (
         <div className="toolbar">
