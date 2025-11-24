@@ -66,3 +66,29 @@
     font-size: 0.875rem;
     color: var(--text-secondary);
 }
+
+.recent-doc-meta {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.recent-doc-size {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.recent-doc-delete {
+    padding: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.2s;
+}
+
+.recent-doc-delete:hover {
+    background-color: #fee2e2;
+    color: #ef4444;
+}

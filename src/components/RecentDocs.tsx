@@ -1,24 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, FileText } from 'lucide-react';
+import { Clock, FileText, Trash2 } from 'lucide-react';
+import { getAllPDFs, deletePDFFromDB } from '../utils/dbUtils';
+import type { StoredPDF } from '../utils/dbUtils';
 import './RecentDocs.css';
 
-interface RecentDoc {
-    name: string;
-    timestamp: number;
-}
-
 interface RecentDocsProps {
-    onFileSelect: (file: File) => void;
+    onLoadPDF: (pdfId: number) => void;
 }
 
-export const RecentDocs: React.FC<RecentDocsProps> = ({ onFileSelect }) => {
-    const [recentDocs, setRecentDocs] = useState<RecentDoc[]>([]);
+export const RecentDocs: React.FC<RecentDocsProps> = ({ onLoadPDF }) => {
+    const [recentDocs, setRecentDocs] = useState<StoredPDF[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const loadDocs = async () => {
+        try {
+            const pdfs = await getAllPDFs();
+            setRecentDocs(pdfs);
+        } catch (error) {
+            console.error('Error loading PDFs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const stored = localStorage.getItem('recentDocs');
-        if (stored) {
-            setRecentDocs(JSON.parse(stored));
-        }
+        loadDocs();
     }, []);
 
     const formatDate = (timestamp: number) => {
@@ -36,9 +42,23 @@ export const RecentDocs: React.FC<RecentDocsProps> = ({ onFileSelect }) => {
         return date.toLocaleDateString();
     };
 
-    const handleDocClick = (docName: string) => {
-        alert(`To edit "${docName}", please upload it again from the Upload PDF tab.\n\nNote: This app runs entirely in your browser and doesn't store your files.`);
+    const formatSize = (bytes: number) => {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     };
+
+    const handleDelete = async (e: React.MouseEvent, id: number) => {
+        e.stopPropagation();
+        if (confirm('Delete this PDF from storage?')) {
+            await deletePDFFromDB(id);
+            loadDocs();
+        }
+    };
+
+    if (loading) {
+        return <div className="recent-docs-empty"><p>Loading...</p></div>;
+    }
 
     if (recentDocs.length === 0) {
         return (
@@ -52,15 +72,26 @@ export const RecentDocs: React.FC<RecentDocsProps> = ({ onFileSelect }) => {
 
     return (
         <div className="recent-docs-list">
-            {recentDocs.map((doc, index) => (
-                <div key={index} className="recent-doc-item" onClick={() => handleDocClick(doc.name)}>
+            {recentDocs.map((doc) => (
+                <div key={doc.id} className="recent-doc-item" onClick={() => onLoadPDF(doc.id!)}>
                     <FileText size={24} />
                     <div className="recent-doc-info">
                         <span className="recent-doc-name">{doc.name}</span>
-                        <span className="recent-doc-time">{formatDate(doc.timestamp)}</span>
+                        <div className="recent-doc-meta">
+                            <span className="recent-doc-time">{formatDate(doc.timestamp)}</span>
+                            <span className="recent-doc-size">{formatSize(doc.data.byteLength)}</span>
+                        </div>
                     </div>
+                    <button
+                        className="recent-doc-delete"
+                        onClick={(e) => handleDelete(e, doc.id!)}
+                        title="Delete"
+                    >
+                        <Trash2 size={16} />
+                    </button>
                 </div>
             ))}
         </div>
     );
 };
+

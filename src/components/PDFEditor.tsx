@@ -6,6 +6,7 @@ import { PageCanvas } from './PageCanvas';
 import { Toolbar } from './Toolbar';
 import { RecentDocs } from './RecentDocs';
 import { loadPDF, savePDF } from '../utils/pdfUtils';
+import { savePDFToDB, updatePDFInDB, getPDFFromDB } from '../utils/dbUtils';
 import './PDFEditor.css';
 
 export const PDFEditor: React.FC = () => {
@@ -18,6 +19,7 @@ export const PDFEditor: React.FC = () => {
     const [originalFileName, setOriginalFileName] = useState<string>('document.pdf');
     const lastMousePos = React.useRef<{ x: number, y: number }>({ x: 100, y: 100 });
     const [activeTab, setActiveTab] = useState<'upload' | 'recent'>('upload');
+    const [currentPDFId, setCurrentPDFId] = useState<number | null>(null);
 
     // History Management
     const undoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
@@ -103,13 +105,16 @@ export const PDFEditor: React.FC = () => {
         try {
             setOriginalFileName(file.name);
 
-            // Add to recent docs
-            const recentDocs = JSON.parse(localStorage.getItem('recentDocs') || '[]');
-            const newDoc = { name: file.name, timestamp: Date.now() };
-            const updated = [newDoc, ...recentDocs.filter((d: any) => d.name !== file.name)].slice(0, 10);
-            localStorage.setItem('recentDocs', JSON.stringify(updated));
-
             const arrayBuffer = await file.arrayBuffer();
+
+            // Save to IndexedDB
+            const pdfId = await savePDFToDB({
+                name: file.name,
+                data: arrayBuffer,
+                timestamp: Date.now()
+            });
+            setCurrentPDFId(pdfId);
+
             setOriginalPdfBytes(arrayBuffer);
 
             const pdf = await loadPDF(file);
@@ -357,12 +362,38 @@ export const PDFEditor: React.FC = () => {
 
         try {
             const modifiedPdfBytes = await savePDF(originalPdfBytes, fabricCanvases, 1.5);
+
+            // Update IndexedDB with edited version
+            if (currentPDFId !== null) {
+                await updatePDFInDB(currentPDFId, modifiedPdfBytes.buffer as ArrayBuffer);
+            }
+
             const blob = new Blob([modifiedPdfBytes as any], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.download = originalFileName;
             link.click();
+        } catch (error) {
+            console.error("Error saving PDF:", error);
+            alert("Failed to save PDF.");
+        }
+    };
+
+    const handleLoadFromDB = async (pdfId: number) => {
+        try {
+            const storedPDF = await getPDFFromDB(pdfId);
+            if (!storedPDF) {
+                alert('PDF not found in storage');
+                return;
+            }
+
+            setOriginalFileName(storedPDF.name);
+            setCurrentPDFId(pdfId);
+
+            // Use edited version if available, otherwise original
+            const arrayBuffer = storedPDF.editedData || storedPDF.data;
+            setOriginalPdfBytes(arrayBuffer);
         } catch (error) {
             console.error("Error saving PDF:", error);
             alert("Failed to save PDF.");
@@ -392,7 +423,7 @@ export const PDFEditor: React.FC = () => {
                 {activeTab === 'upload' ? (
                     <PDFUploader onFileSelect={handleFileSelect} />
                 ) : (
-                    <RecentDocs onFileSelect={handleFileSelect} />
+                    <RecentDocs onLoadPDF={handleLoadFromDB} />
                 )}
             </div>
         );
