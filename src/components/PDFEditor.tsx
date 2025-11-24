@@ -165,24 +165,7 @@ export const PDFEditor: React.FC = () => {
 
         // Capture state for history
         canvas.on('object:modified', () => {
-            // We need to save state BEFORE modification? 
-            // Actually, usually we save state on 'object:modified' which is AFTER.
-            // But for undo, we need the state BEFORE.
-            // Strategy: Save state on 'mouse:down' if target exists? Or 'object:moving'?
-            // Better: Save state to undo stack *before* applying changes?
-            // Standard way: 
-            // 1. On 'object:modified', push the *previous* state? No, that's hard to track.
-            // 2. Push current state to undo stack *before* making a change.
-            // 3. When 'object:modified' fires, it means a change happened.
-
-            // Let's try: Save state on 'mouse:down' if we hit an object?
-            // But we don't know if it will be modified.
-
-            // Alternative: Snapshot the whole page on every 'object:modified'.
-            // Then Undo pops the previous snapshot.
-            // But we need the snapshot *before* the modification.
-
-            // Let's use 'before:transform' to capture state?
+            setHasUnsavedChanges(true);
         });
 
         // Let's simplify: 
@@ -218,6 +201,7 @@ export const PDFEditor: React.FC = () => {
 
         canvas.on('before:transform', () => {
             saveState(pageIndex);
+            setHasUnsavedChanges(true);
         });
 
         // Also need to handle 'text:editing:entered' -> save state?
@@ -303,6 +287,7 @@ export const PDFEditor: React.FC = () => {
 
     const handleAddText = () => {
         saveState(activePageIndex); // Save before add
+        setHasUnsavedChanges(true);
         const canvas = fabricCanvases[activePageIndex];
         if (!canvas) return;
 
@@ -337,6 +322,7 @@ export const PDFEditor: React.FC = () => {
 
     const handleAddSignature = async (file: File) => {
         saveState(activePageIndex); // Save before add
+        setHasUnsavedChanges(true);
         const canvas = fabricCanvases[activePageIndex];
         if (!canvas) return;
 
