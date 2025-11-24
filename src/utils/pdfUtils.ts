@@ -76,28 +76,79 @@ export const savePDF = async (
                 const fontSize = (textObj.fontSize || 16) * (textObj.scaleY || 1) / scale;
                 const color = textObj.fill ? textObj.fill.toString() : '#000000';
 
-                // pdf-lib drawText y is the baseline? No, it's usually bottom-left of the text box.
-                // Fabric text top is top-left of the bounding box.
-                // So y_pdf = height - (top / scale) - (fontSize?)
-                // Actually, pdf-lib drawText y is the bottom of the text.
-                // Let's approximate: y_pdf = height - (top / scale) - (objHeight * scaleY / scale)
+                // Font selection logic
+                let fontToEmbed = StandardFonts.Helvetica;
+                const fontFamily = textObj.fontFamily;
+                const isBold = textObj.fontWeight === 'bold';
+                const isItalic = textObj.fontStyle === 'italic';
 
-                const pdfFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+                if (fontFamily === 'Times New Roman') {
+                    if (isBold && isItalic) fontToEmbed = StandardFonts.TimesRomanBoldItalic;
+                    else if (isBold) fontToEmbed = StandardFonts.TimesRomanBold;
+                    else if (isItalic) fontToEmbed = StandardFonts.TimesRomanItalic;
+                    else fontToEmbed = StandardFonts.TimesRoman;
+                } else if (fontFamily === 'Courier') {
+                    if (isBold && isItalic) fontToEmbed = StandardFonts.CourierBoldOblique;
+                    else if (isBold) fontToEmbed = StandardFonts.CourierBold;
+                    else if (isItalic) fontToEmbed = StandardFonts.CourierOblique;
+                    else fontToEmbed = StandardFonts.Courier;
+                } else {
+                    // Default to Helvetica
+                    if (isBold && isItalic) fontToEmbed = StandardFonts.HelveticaBoldOblique;
+                    else if (isBold) fontToEmbed = StandardFonts.HelveticaBold;
+                    else if (isItalic) fontToEmbed = StandardFonts.HelveticaOblique;
+                    else fontToEmbed = StandardFonts.Helvetica;
+                }
 
-                // Simple color parsing (assuming hex or simple name, defaulting to black)
-                // For now just black or blue
+                const pdfFont = await pdfDoc.embedFont(fontToEmbed);
+
+                // Color parsing
                 let pdfColor = rgb(0, 0, 0);
-                if (color === 'red') pdfColor = rgb(1, 0, 0);
-                if (color === 'blue') pdfColor = rgb(0, 0, 1);
-                // TODO: Better color parsing
+                if (color.startsWith('#')) {
+                    const r = parseInt(color.slice(1, 3), 16) / 255;
+                    const g = parseInt(color.slice(3, 5), 16) / 255;
+                    const b = parseInt(color.slice(5, 7), 16) / 255;
+                    pdfColor = rgb(r, g, b);
+                } else if (color === 'red') pdfColor = rgb(1, 0, 0);
+                else if (color === 'blue') pdfColor = rgb(0, 0, 1);
+
+                // Sub/Superscript handling
+                // We stored 'script' property on the object
+                const script = (textObj as any).script;
+                let yOffset = 0;
+                let finalFontSize = fontSize;
+
+                if (script === 'super') {
+                    yOffset = fontSize * 0.4;
+                    finalFontSize = fontSize * 0.6;
+                } else if (script === 'sub') {
+                    yOffset = -fontSize * 0.2;
+                    finalFontSize = fontSize * 0.6;
+                }
+
+                const textWidth = pdfFont.widthOfTextAtSize(text, finalFontSize);
+
+                const xPos = x;
+                // Adjust Y for sub/super
+                const yPos = height - (top / scale) - (textObj.height! * (textObj.scaleY || 1) / scale) + yOffset;
 
                 page.drawText(text, {
-                    x: x,
-                    y: height - (top / scale) - (textObj.height! * (textObj.scaleY || 1) / scale), // Approximate
-                    size: fontSize,
+                    x: xPos,
+                    y: yPos,
+                    size: finalFontSize,
                     font: pdfFont,
                     color: pdfColor,
                 });
+
+                // Underline handling
+                if (textObj.underline) {
+                    page.drawLine({
+                        start: { x: xPos, y: yPos - 2 },
+                        end: { x: xPos + textWidth, y: yPos - 2 },
+                        thickness: 1,
+                        color: pdfColor,
+                    });
+                }
             } else if (obj.type === 'image') {
                 const imgObj = obj as FabricImage;
                 const imgBytes = await (await fetch(imgObj.getSrc())).arrayBuffer();

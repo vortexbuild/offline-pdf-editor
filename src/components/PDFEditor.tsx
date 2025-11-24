@@ -66,9 +66,50 @@ export const PDFEditor: React.FC = () => {
         const activeObj = canvas.getActiveObject();
         if (!activeObj) return;
 
-        activeObj.set(key, value);
+        if (key === 'script') {
+            // Handle sub/superscript logic
+            // If value is 'super', set subscript to false/normal
+            // We need to store this state. Fabric doesn't have native sub/super property on IText that renders automatically like HTML?
+            // Actually Fabric supports subscript/superscript via setSelectionStyles if selecting text, 
+            // or we can simulate it by changing fontSize and deltaY.
+            // But for the whole object, we can just store a custom property and handle it in rendering/saving.
+            // Let's just store it as a property on the object for now.
+
+            if (value === 'super') {
+                activeObj.set('subscript', false);
+                activeObj.set('superscript', true);
+            } else if (value === 'sub') {
+                activeObj.set('superscript', false);
+                activeObj.set('subscript', true);
+            } else {
+                activeObj.set('superscript', false);
+                activeObj.set('subscript', false);
+            }
+            // Visual feedback in fabric? 
+            // We might need to adjust fontSize/deltaY manually if we want WYSIWYG.
+            // For simplicity, let's just rely on the property for PDF generation
+            // OR we can actually use Fabric's support if we use setSelectionStyles but that's for selected text range.
+            // Let's try to just set a custom property 'script' for now and maybe adjust fontSize visually?
+            activeObj.set('script', value);
+        } else {
+            activeObj.set(key, value);
+        }
+
         canvas.requestRenderAll();
-        setActiveObject({ ...activeObj.toObject(), [key]: value }); // Force re-render
+        setActiveObject({ ...activeObj.toObject(), script: (activeObj as any).script });
+    };
+
+    const handleDeleteObject = () => {
+        const canvas = fabricCanvases[activePageIndex];
+        if (!canvas) return;
+
+        const activeObj = canvas.getActiveObject();
+        if (!activeObj) return;
+
+        canvas.remove(activeObj);
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        setActiveObject(null);
     };
 
     const handleAddText = () => {
@@ -146,6 +187,7 @@ export const PDFEditor: React.FC = () => {
                         onSave={handleSave}
                         activeObject={activeObject}
                         onUpdateObject={handleUpdateObject}
+                        onDeleteObject={handleDeleteObject}
                     />
                     <button className="btn btn-outline" onClick={() => setPdfDocument(null)}>Close</button>
                 </div>

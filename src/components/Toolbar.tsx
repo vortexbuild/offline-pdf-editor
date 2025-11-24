@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Type, PenTool, Download } from 'lucide-react';
+import { Type, PenTool, Download, Trash2, Bold, Italic, Underline, Superscript, Subscript } from 'lucide-react';
 import './Toolbar.css';
 
 interface ToolbarProps {
@@ -8,6 +8,7 @@ interface ToolbarProps {
     onSave: () => void;
     activeObject: any; // Using any for simplicity, ideally FabricObject
     onUpdateObject: (key: string, value: any) => void;
+    onDeleteObject: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -15,7 +16,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     onAddSignature,
     onSave,
     activeObject,
-    onUpdateObject
+    onUpdateObject,
+    onDeleteObject
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,27 +53,93 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 onChange={handleFileChange}
             />
 
-            {isText && (
+
+            <div className="divider"></div>
+            <div className="toolbar-group">
+                <select
+                    className="toolbar-select"
+                    value={activeObject?.fontFamily || 'Helvetica'}
+                    onChange={(e) => onUpdateObject('fontFamily', e.target.value)}
+                    title="Font Family"
+                    disabled={!isText}
+                >
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier">Courier</option>
+                </select>
+
+                <input
+                    type="number"
+                    className="toolbar-input"
+                    value={activeObject?.fontSize || 20}
+                    onChange={(e) => onUpdateObject('fontSize', parseInt(e.target.value))}
+                    min={8}
+                    max={72}
+                    title="Font Size"
+                    disabled={!isText}
+                />
+                <input
+                    type="color"
+                    className="toolbar-color"
+                    value={activeObject?.fill as string || '#000000'}
+                    onChange={(e) => onUpdateObject('fill', e.target.value)}
+                    title="Text Color"
+                    disabled={!isText}
+                />
+
+                <button
+                    className={`btn btn-icon ${activeObject?.fontWeight === 'bold' ? 'active' : ''}`}
+                    onClick={() => onUpdateObject('fontWeight', activeObject?.fontWeight === 'bold' ? 'normal' : 'bold')}
+                    title="Bold"
+                    disabled={!isText}
+                >
+                    <Bold size={16} />
+                </button>
+
+                <button
+                    className={`btn btn-icon ${activeObject?.fontStyle === 'italic' ? 'active' : ''}`}
+                    onClick={() => onUpdateObject('fontStyle', activeObject?.fontStyle === 'italic' ? 'normal' : 'italic')}
+                    title="Italic"
+                    disabled={!isText}
+                >
+                    <Italic size={16} />
+                </button>
+
+                <button
+                    className={`btn btn-icon ${activeObject?.underline ? 'active' : ''}`}
+                    onClick={() => onUpdateObject('underline', !activeObject?.underline)}
+                    title="Underline"
+                    disabled={!isText}
+                >
+                    <Underline size={16} />
+                </button>
+
+                {/* Sub/Superscript - simplified as toggles that are mutually exclusive */}
+                <button
+                    className={`btn btn-icon ${activeObject?.script === 'super' ? 'active' : ''}`}
+                    onClick={() => onUpdateObject('script', activeObject?.script === 'super' ? 'normal' : 'super')}
+                    title="Superscript"
+                    disabled={!isText}
+                >
+                    <Superscript size={16} />
+                </button>
+                <button
+                    className={`btn btn-icon ${activeObject?.script === 'sub' ? 'active' : ''}`}
+                    onClick={() => onUpdateObject('script', activeObject?.script === 'sub' ? 'normal' : 'sub')}
+                    title="Subscript"
+                    disabled={!isText}
+                >
+                    <Subscript size={16} />
+                </button>
+            </div>
+
+
+            {activeObject && (
                 <>
                     <div className="divider"></div>
-                    <div className="toolbar-group">
-                        <input
-                            type="number"
-                            className="toolbar-input"
-                            value={activeObject.fontSize || 20}
-                            onChange={(e) => onUpdateObject('fontSize', parseInt(e.target.value))}
-                            min={8}
-                            max={72}
-                            title="Font Size"
-                        />
-                        <input
-                            type="color"
-                            className="toolbar-color"
-                            value={activeObject.fill as string || '#000000'}
-                            onChange={(e) => onUpdateObject('fill', e.target.value)}
-                            title="Text Color"
-                        />
-                    </div>
+                    <button className="btn btn-danger toolbar-btn-icon" onClick={onDeleteObject} title="Delete">
+                        <Trash2 size={20} />
+                    </button>
                 </>
             )}
 
