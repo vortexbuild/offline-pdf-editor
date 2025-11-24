@@ -72,7 +72,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     type="number"
                     className="toolbar-input"
                     value={activeObject?.fontSize || 20}
-                    onChange={(e) => onUpdateObject('fontSize', parseInt(e.target.value))}
+                    onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) {
+                            onUpdateObject('fontSize', val);
+                        }
+                    }}
                     min={8}
                     max={72}
                     title="Font Size"

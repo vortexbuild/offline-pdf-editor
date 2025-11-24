@@ -35,7 +35,7 @@ export const PDFEditor: React.FC = () => {
         }
     };
 
-    const handleCanvasReady = (canvas: Canvas, pageIndex: number) => {
+    const handleCanvasReady = React.useCallback((canvas: Canvas, pageIndex: number) => {
         setFabricCanvases(prev => ({
             ...prev,
             [pageIndex]: canvas
@@ -57,14 +57,28 @@ export const PDFEditor: React.FC = () => {
         canvas.on('selection:cleared', () => {
             setActiveObject(null);
         });
-    };
+    }, []);
 
     const handleUpdateObject = (key: string, value: any) => {
-        const canvas = fabricCanvases[activePageIndex];
-        if (!canvas) return;
+        // Find the canvas that has an active object
+        let canvas = fabricCanvases[activePageIndex];
+        let activeObj = canvas?.getActiveObject();
 
-        const activeObj = canvas.getActiveObject();
-        if (!activeObj) return;
+        if (!activeObj) {
+            // Fallback: search all canvases
+            const foundIndex = Object.keys(fabricCanvases).find(index =>
+                fabricCanvases[parseInt(index)].getActiveObject()
+            );
+            if (foundIndex) {
+                canvas = fabricCanvases[parseInt(foundIndex)];
+                activeObj = canvas.getActiveObject();
+                setActivePageIndex(parseInt(foundIndex));
+            }
+        }
+
+        if (!canvas || !activeObj) return;
+
+        if (key === 'fontSize' && isNaN(value)) return;
 
         if (key === 'script') {
             // Handle sub/superscript logic
@@ -96,7 +110,13 @@ export const PDFEditor: React.FC = () => {
         }
 
         canvas.requestRenderAll();
-        setActiveObject({ ...activeObj.toObject(), script: (activeObj as any).script });
+        // Ensure type is preserved and merge with existing state to be safe
+        setActiveObject((prev: any) => ({
+            ...prev,
+            ...activeObj.toObject(),
+            script: (activeObj as any).script,
+            type: activeObj.type // Explicitly ensure type is present
+        }));
     };
 
     const handleDeleteObject = () => {
