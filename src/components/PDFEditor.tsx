@@ -394,9 +394,21 @@ export const PDFEditor: React.FC = () => {
             // Use edited version if available, otherwise original
             const arrayBuffer = storedPDF.editedData || storedPDF.data;
             setOriginalPdfBytes(arrayBuffer);
+
+            // Load and render the PDF
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+            const pdf = await loadingTask.promise;
+            setPdfDocument(pdf);
+
+            const loadedPages: pdfjsLib.PDFPageProxy[] = [];
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                loadedPages.push(page);
+            }
+            setPages(loadedPages);
         } catch (error) {
-            console.error("Error saving PDF:", error);
-            alert("Failed to save PDF.");
+            console.error("Error loading PDF from DB:", error);
+            alert("Failed to load PDF.");
         }
     };
 
