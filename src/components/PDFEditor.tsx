@@ -20,6 +20,7 @@ export const PDFEditor: React.FC = () => {
     const lastMousePos = React.useRef<{ x: number, y: number }>({ x: 100, y: 100 });
     const [activeTab, setActiveTab] = useState<'upload' | 'recent'>('upload');
     const [currentPDFId, setCurrentPDFId] = useState<number | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     // History Management
     const undoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
@@ -164,171 +165,176 @@ export const PDFEditor: React.FC = () => {
 
         // Capture state for history
         canvas.on('object:modified', () => {
-            // We need to save state BEFORE modification? 
-            // Actually, usually we save state on 'object:modified' which is AFTER.
-            // But for undo, we need the state BEFORE.
-            // Strategy: Save state on 'mouse:down' if target exists? Or 'object:moving'?
-            // Better: Save state to undo stack *before* applying changes?
-            // Standard way: 
-            // 1. On 'object:modified', push the *previous* state? No, that's hard to track.
-            // 2. Push current state to undo stack *before* making a change.
-            // 3. When 'object:modified' fires, it means a change happened.
-
-            // Let's try: Save state on 'mouse:down' if we hit an object?
-            // But we don't know if it will be modified.
-
-            // Alternative: Snapshot the whole page on every 'object:modified'.
-            // Then Undo pops the previous snapshot.
-            // But we need the snapshot *before* the modification.
-
-            // Let's use 'before:transform' to capture state?
+            setHasUnsavedChanges(true);
         });
+        // We need to save state BEFORE modification? 
+        // Actually, usually we save state on 'object:modified' which is AFTER.
+        // But for undo, we need the state BEFORE.
+        // Strategy: Save state on 'mouse:down' if target exists? Or 'object:moving'?
+        // Better: Save state to undo stack *before* applying changes?
+        // Standard way: 
+        // 1. On 'object:modified', push the *previous* state? No, that's hard to track.
+        // 2. Push current state to undo stack *before* making a change.
+        // 3. When 'object:modified' fires, it means a change happened.
 
-        // Let's simplify: 
-        // We need to save the state *before* a change happens.
-        // For add/delete, we call saveState() manually before the action.
-        // For modifications (drag/resize), we can hook into 'object:modified'.
-        // But 'object:modified' is post-facto.
-        // So we need to capture state when an object *starts* being modified.
-        // 'object:modified' gives us the end result.
-        // If we save state on 'object:modified', we are saving the *new* state.
-        // That's wrong for Undo. Undo needs the *old* state.
+        // Let's try: Save state on 'mouse:down' if we hit an object?
+        // But we don't know if it will be modified.
 
-        // Correct approach:
-        // 1. On 'object:modified', we want to be able to go back.
-        // So we should have saved the state *before* the modification started.
-        // We can save state on 'mouse:down' or 'object:selected'? Too frequent.
+        // Alternative: Snapshot the whole page on every 'object:modified'.
+        // Then Undo pops the previous snapshot.
+        // But we need the snapshot *before* the modification.
 
-        // Let's try this:
-        // Keep a 'currentState' ref for the active page.
-        // When 'object:modified' happens, push 'currentState' to undoStack, then update 'currentState'.
-        // But we have multiple pages.
+        // Let's use 'before:transform' to capture state?
+    });
 
-        // Let's just use a simple approach:
-        // On 'object:modified', we assume the *previous* state is lost unless we saved it.
-        // So we must save on 'before:transform' or similar?
-        // Fabric has 'object:modified'.
+    // Let's simplify: 
+    // We need to save the state *before* a change happens.
+    // For add/delete, we call saveState() manually before the action.
+    // For modifications (drag/resize), we can hook into 'object:modified'.
+    // But 'object:modified' is post-facto.
+    // So we need to capture state when an object *starts* being modified.
+    // 'object:modified' gives us the end result.
+    // If we save state on 'object:modified', we are saving the *new* state.
+    // That's wrong for Undo. Undo needs the *old* state.
 
-        // Let's try saving state *before* we perform actions in our handlers (add/delete/update).
-        // For drag/resize (canvas interactions), we need to hook into canvas events.
+    // Correct approach:
+    // 1. On 'object:modified', we want to be able to go back.
+    // So we should have saved the state *before* the modification started.
+    // We can save state on 'mouse:down' or 'object:selected'? Too frequent.
 
-        // Let's use a temp variable to store state on 'mouse:down' or 'transform:start'?
-        // 'before:transform' is good.
+    // Let's try this:
+    // Keep a 'currentState' ref for the active page.
+    // When 'object:modified' happens, push 'currentState' to undoStack, then update 'currentState'.
+    // But we have multiple pages.
 
-        canvas.on('before:transform', () => {
-            saveState(pageIndex);
-        });
+    // Let's just use a simple approach:
+    // On 'object:modified', we assume the *previous* state is lost unless we saved it.
+    // So we must save on 'before:transform' or similar?
+    // Fabric has 'object:modified'.
 
-        // Also need to handle 'text:editing:entered' -> save state?
-        // 'text:changed' -> save state?
+    // Let's try saving state *before* we perform actions in our handlers (add/delete/update).
+    // For drag/resize (canvas interactions), we need to hook into canvas events.
 
-    }, []);
+    // Let's use a temp variable to store state on 'mouse:down' or 'transform:start'?
+    // 'before:transform' is good.
 
-    const handleUpdateObject = (key: string, value: any) => {
-        saveState(activePageIndex); // Save before update
+    canvas.on('before:transform', () => {
+        saveState(pageIndex);
+        setHasUnsavedChanges(true);
+    });
 
-        // Find the canvas that has an active object
-        let canvas = fabricCanvases[activePageIndex];
-        let activeObj = canvas?.getActiveObject();
+    // Also need to handle 'text:editing:entered' -> save state?
+    // 'text:changed' -> save state?
 
-        if (!activeObj) {
-            // Fallback: search all canvases
-            const foundIndex = Object.keys(fabricCanvases).find(index =>
-                fabricCanvases[parseInt(index)].getActiveObject()
-            );
-            if (foundIndex) {
-                canvas = fabricCanvases[parseInt(foundIndex)];
-                activeObj = canvas.getActiveObject();
-                setActivePageIndex(parseInt(foundIndex));
-            }
+}, []);
+
+const handleUpdateObject = (key: string, value: any) => {
+    saveState(activePageIndex); // Save before update
+
+    // Find the canvas that has an active object
+    let canvas = fabricCanvases[activePageIndex];
+    let activeObj = canvas?.getActiveObject();
+
+    if (!activeObj) {
+        // Fallback: search all canvases
+        const foundIndex = Object.keys(fabricCanvases).find(index =>
+            fabricCanvases[parseInt(index)].getActiveObject()
+        );
+        if (foundIndex) {
+            canvas = fabricCanvases[parseInt(foundIndex)];
+            activeObj = canvas.getActiveObject();
+            setActivePageIndex(parseInt(foundIndex));
         }
+    }
 
-        if (!canvas || !activeObj) return;
+    if (!canvas || !activeObj) return;
 
-        if (key === 'fontSize' && isNaN(value)) return;
+    if (key === 'fontSize' && isNaN(value)) return;
 
-        if (key === 'script') {
-            // Handle sub/superscript logic
-            // If value is 'super', set subscript to false/normal
-            // We need to store this state. Fabric doesn't have native sub/super property on IText that renders automatically like HTML?
-            // Actually Fabric supports subscript/superscript via setSelectionStyles if selecting text, 
-            // or we can simulate it by changing fontSize and deltaY.
-            // But for the whole object, we can just store a custom property and handle it in rendering/saving.
-            // Let's just store it as a property on the object for now.
+    if (key === 'script') {
+        // Handle sub/superscript logic
+        // If value is 'super', set subscript to false/normal
+        // We need to store this state. Fabric doesn't have native sub/super property on IText that renders automatically like HTML?
+        // Actually Fabric supports subscript/superscript via setSelectionStyles if selecting text, 
+        // or we can simulate it by changing fontSize and deltaY.
+        // But for the whole object, we can just store a custom property and handle it in rendering/saving.
+        // Let's just store it as a property on the object for now.
 
-            if (value === 'super') {
-                activeObj.set('subscript', false);
-                activeObj.set('superscript', true);
-            } else if (value === 'sub') {
-                activeObj.set('superscript', false);
-                activeObj.set('subscript', true);
-            } else {
-                activeObj.set('superscript', false);
-                activeObj.set('subscript', false);
-            }
-            // Visual feedback in fabric? 
-            // We might need to adjust fontSize/deltaY manually if we want WYSIWYG.
-            // For simplicity, let's just rely on the property for PDF generation
-            // OR we can actually use Fabric's support if we use setSelectionStyles but that's for selected text range.
-            // Let's try to just set a custom property 'script' for now and maybe adjust fontSize visually?
-            activeObj.set('script', value);
+        if (value === 'super') {
+            activeObj.set('subscript', false);
+            activeObj.set('superscript', true);
+        } else if (value === 'sub') {
+            activeObj.set('superscript', false);
+            activeObj.set('subscript', true);
         } else {
-            activeObj.set(key, value);
+            activeObj.set('superscript', false);
+            activeObj.set('subscript', false);
         }
+        // Visual feedback in fabric? 
+        // We might need to adjust fontSize/deltaY manually if we want WYSIWYG.
+        // For simplicity, let's just rely on the property for PDF generation
+        // OR we can actually use Fabric's support if we use setSelectionStyles but that's for selected text range.
+        // Let's try to just set a custom property 'script' for now and maybe adjust fontSize visually?
+        activeObj.set('script', value);
+    } else {
+        activeObj.set(key, value);
+    }
 
-        canvas.requestRenderAll();
-        // Ensure type is preserved and merge with existing state to be safe
-        setActiveObject((prev: any) => ({
-            ...prev,
-            ...activeObj.toObject(),
-            script: (activeObj as any).script,
-            type: activeObj.type // Explicitly ensure type is present
-        }));
-    };
+    canvas.requestRenderAll();
+    // Ensure type is preserved and merge with existing state to be safe
+    setActiveObject((prev: any) => ({
+        ...prev,
+        ...activeObj.toObject(),
+        script: (activeObj as any).script,
+        type: activeObj.type // Explicitly ensure type is present
+    }));
+};
 
-    const handleDeleteObject = () => {
-        saveState(activePageIndex); // Save before delete
-        const canvas = fabricCanvases[activePageIndex];
-        if (!canvas) return;
+const handleDeleteObject = () => {
+    saveState(activePageIndex); // Save before delete
+    const canvas = fabricCanvases[activePageIndex];
+    if (!canvas) return;
 
-        const activeObj = canvas.getActiveObject();
-        if (!activeObj) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj) return;
 
-        canvas.remove(activeObj);
-        canvas.discardActiveObject();
-        canvas.requestRenderAll();
-        setActiveObject(null);
-    };
+    canvas.remove(activeObj);
+    canvas.discardActiveObject();
+    canvas.requestRenderAll();
+    setActiveObject(null);
+};
 
-    const handleAddText = () => {
-        saveState(activePageIndex); // Save before add
-        const canvas = fabricCanvases[activePageIndex];
-        if (!canvas) return;
+const handleAddText = () => {
+    saveState(activePageIndex); // Save before add
+    setHasUnsavedChanges(true);
+    const canvas = fabricCanvases[activePageIndex];
+    if (!canvas) return;
 
-        const text = new Textbox('Enter text', {
-            left: lastMousePos.current.x,
-            top: lastMousePos.current.y,
-            fontFamily: 'Helvetica',
-            fill: '#000000',
-            fontSize: 14,
-            width: 200,
-            splitByGrapheme: true,
-            lockScalingY: true,
-            lockScalingX: true,
-        });
+    const text = new Textbox('Enter text', {
+        left: lastMousePos.current.x,
+        top: lastMousePos.current.y,
+        fontFamily: 'Helvetica',
+        fill: '#000000',
+        fontSize: 14,
+        width: 200,
+        splitByGrapheme: true,
+        lockScalingY: true,
+        lockScalingX: true,
+    });
 
-        text.setControlsVisibility({
-            mt: false,
-            mb: false,
-            ml: true,
-            mr: true,
-            bl: false,
-            br: false,
-            tl: false,
-            tr: false,
-            mtr: true,
-        });
+    text.setControlsVisibility({
+        mt: false,
+        mb: false,
+        ml: true,
+        mr: true,
+        bl: false,
+        br: false,
+        tl: false,
+        tr: false,
+        mtr: true,
+    });
 
+    ```
         canvas.add(text);
         canvas.setActiveObject(text);
         canvas.requestRenderAll();
@@ -336,6 +342,7 @@ export const PDFEditor: React.FC = () => {
 
     const handleAddSignature = async (file: File) => {
         saveState(activePageIndex); // Save before add
+        setHasUnsavedChanges(true);
         const canvas = fabricCanvases[activePageIndex];
         if (!canvas) return;
 
@@ -355,6 +362,30 @@ export const PDFEditor: React.FC = () => {
             }
         };
         reader.readAsDataURL(file);
+    };
+
+    const handleSaveToStorage = async () => {
+        if (!originalPdfBytes || currentPDFId === null) return;
+
+        try {
+            const modifiedPdfBytes = await savePDF(originalPdfBytes, fabricCanvases, 1.5);
+            
+            // Collect all canvas states
+            const canvasStates: { [pageIndex: number]: any } = {};
+            Object.keys(fabricCanvases).forEach(key => {
+                const pageIndex = parseInt(key);
+                const canvas = fabricCanvases[pageIndex];
+                if (canvas) {
+                    canvasStates[pageIndex] = canvas.toObject(['id', 'selectable', 'lockUniScaling', 'lockScalingX', 'lockScalingY', 'script', 'fontFamily', 'fontSize', 'fill', 'fontWeight', 'fontStyle', 'underline']);
+                }
+            });
+            await updatePDFInDB(currentPDFId, modifiedPdfBytes.buffer as ArrayBuffer, canvasStates);
+            setHasUnsavedChanges(false);
+            alert('Document saved successfully!');
+        } catch (error) {
+            console.error("Error saving to storage:", error);
+            alert("Failed to save document.");
+        }
     };
 
     const handleSave = async () => {
@@ -433,8 +464,21 @@ export const PDFEditor: React.FC = () => {
                 }, 500);
             }
         } catch (error) {
-            console.error("Error loading PDF from DB:", error);
-            alert("Failed to load PDF.");
+    };
+
+    const handleClose = () => {
+        if (hasUnsavedChanges) {
+            if (confirm('You have unsaved changes. Do you want to save before closing?')) {
+                handleSaveToStorage().then(() => {
+                    setPdfDocument(null);
+                    setHasUnsavedChanges(false);
+                });
+            } else {
+                setPdfDocument(null);
+                setHasUnsavedChanges(false);
+            }
+        } else {
+            setPdfDocument(null);
         }
     };
 
@@ -445,13 +489,13 @@ export const PDFEditor: React.FC = () => {
 
                 <div className="tabs">
                     <button
-                        className={`tab ${activeTab === 'upload' ? 'active' : ''}`}
+                        className={`tab ${ activeTab === 'upload' ? 'active' : '' } `}
                         onClick={() => setActiveTab('upload')}
                     >
                         Upload PDF
                     </button>
                     <button
-                        className={`tab ${activeTab === 'recent' ? 'active' : ''}`}
+                        className={`tab ${ activeTab === 'recent' ? 'active' : '' } `}
                         onClick={() => setActiveTab('recent')}
                     >
                         Recent
@@ -479,7 +523,9 @@ export const PDFEditor: React.FC = () => {
                         activeObject={activeObject}
                         onUpdateObject={handleUpdateObject}
                         onDeleteObject={handleDeleteObject}
-                        onClose={() => setPdfDocument(null)}
+                        onClose={handleClose}
+                        onSaveToStorage={handleSaveToStorage}
+                        hasUnsavedChanges={hasUnsavedChanges}
                     />
                 </div>
             </header>
@@ -490,7 +536,7 @@ export const PDFEditor: React.FC = () => {
                         <div
                             key={index}
                             onClick={() => setActivePageIndex(index)}
-                            className={`page-wrapper ${activePageIndex === index ? 'active-page' : ''}`}
+                            className={`page - wrapper ${ activePageIndex === index ? 'active-page' : '' } `}
                         >
                             <PageCanvas
                                 page={page}

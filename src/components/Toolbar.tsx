@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Type, PenTool, Download, Trash2, Bold, Italic, Underline, Superscript, Subscript, X } from 'lucide-react';
+import { Type, PenTool, Download, Trash2, Bold, Italic, Underline, Superscript, Subscript, X, Save } from 'lucide-react';
 import './Toolbar.css';
 
 interface ToolbarProps {
@@ -10,6 +10,8 @@ interface ToolbarProps {
     onUpdateObject: (key: string, value: any) => void;
     onDeleteObject: () => void;
     onClose: () => void;
+    onSaveToStorage: () => void;
+    hasUnsavedChanges: boolean;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -19,7 +21,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     activeObject,
     onUpdateObject,
     onDeleteObject,
-    onClose
+    onClose,
+    onSaveToStorage,
+    hasUnsavedChanges
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -143,7 +147,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
             <div className="divider"></div>
 
-            <button className="btn btn-primary btn-icon" onClick={onSave} title="Save PDF">
+            <button className="btn btn-primary btn-icon" onClick={onSaveToStorage} title="Save">
+                <Save size={20} />
+            </button>
+
+            <button className="btn btn-primary btn-icon" onClick={onSave} title="Download PDF">
                 <Download size={20} />
             </button>
 
