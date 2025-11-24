@@ -55,7 +55,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 onChange={handleFileChange}
             />
 
-
             <div className="divider"></div>
             <div className="toolbar-group">
                 <select
@@ -149,8 +148,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 <span>Save PDF</span>
             </button>
 
-            <button className="btn btn-outline toolbar-btn" onClick={onClose} title="Close">
-                <span>Close</span>
+            <button className="btn btn-outline toolbar-btn-icon" onClick={onClose} title="Close">
+                <span>✕</span>
             </button>
         </div>
     );
