@@ -363,9 +363,18 @@ export const PDFEditor: React.FC = () => {
         try {
             const modifiedPdfBytes = await savePDF(originalPdfBytes, fabricCanvases, 1.5);
 
-            // Update IndexedDB with edited version
+            // Update IndexedDB with edited version and canvas states
             if (currentPDFId !== null) {
-                await updatePDFInDB(currentPDFId, modifiedPdfBytes.buffer as ArrayBuffer);
+                // Collect all canvas states
+                const canvasStates: { [pageIndex: number]: any } = {};
+                Object.keys(fabricCanvases).forEach(key => {
+                    const pageIndex = parseInt(key);
+                    const canvas = fabricCanvases[pageIndex];
+                    if (canvas) {
+                        canvasStates[pageIndex] = canvas.toObject(['id', 'selectable', 'lockUniScaling', 'lockScalingX', 'lockScalingY', 'script', 'fontFamily', 'fontSize', 'fill', 'fontWeight', 'fontStyle', 'underline']);
+                    }
+                });
+                await updatePDFInDB(currentPDFId, modifiedPdfBytes.buffer as ArrayBuffer, canvasStates);
             }
 
             const blob = new Blob([modifiedPdfBytes as any], { type: 'application/pdf' });
@@ -406,6 +415,23 @@ export const PDFEditor: React.FC = () => {
                 loadedPages.push(page);
             }
             setPages(loadedPages);
+
+            // Restore canvas states if available
+            if (storedPDF.canvasStates) {
+                // Wait a bit for canvases to be created
+                setTimeout(() => {
+                    Object.keys(storedPDF.canvasStates!).forEach(key => {
+                        const pageIndex = parseInt(key);
+                        const canvasState = storedPDF.canvasStates![pageIndex];
+                        const canvas = fabricCanvases[pageIndex];
+                        if (canvas && canvasState) {
+                            canvas.loadFromJSON(canvasState, () => {
+                                canvas.requestRenderAll();
+                            });
+                        }
+                    });
+                }, 500);
+            }
         } catch (error) {
             console.error("Error loading PDF from DB:", error);
             alert("Failed to load PDF.");

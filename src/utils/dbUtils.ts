@@ -8,6 +8,7 @@ export interface StoredPDF {
     data: ArrayBuffer;
     timestamp: number;
     editedData?: ArrayBuffer;
+    canvasStates?: { [pageIndex: number]: any }; // Fabric.js canvas JSON for each page
 }
 
 const openDB = (): Promise<IDBDatabase> => {
@@ -40,7 +41,7 @@ export const savePDFToDB = async (pdf: Omit<StoredPDF, 'id'>): Promise<number> =
     });
 };
 
-export const updatePDFInDB = async (id: number, editedData: ArrayBuffer): Promise<void> => {
+export const updatePDFInDB = async (id: number, editedData: ArrayBuffer, canvasStates?: { [pageIndex: number]: any }): Promise<void> => {
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -52,6 +53,9 @@ export const updatePDFInDB = async (id: number, editedData: ArrayBuffer): Promis
             if (pdf) {
                 pdf.editedData = editedData;
                 pdf.timestamp = Date.now();
+                if (canvasStates) {
+                    pdf.canvasStates = canvasStates;
+                }
                 const updateRequest = store.put(pdf);
                 updateRequest.onsuccess = () => resolve();
                 updateRequest.onerror = () => reject(updateRequest.error);
