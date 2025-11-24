@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { Canvas, IText, FabricImage } from 'fabric';
+import { Canvas, FabricImage, Textbox } from 'fabric';
 import { PDFUploader } from './PDFUploader';
 import { PageCanvas } from './PageCanvas';
 import { Toolbar } from './Toolbar';
@@ -136,24 +136,27 @@ export const PDFEditor: React.FC = () => {
         const canvas = fabricCanvases[activePageIndex];
         if (!canvas) return;
 
-        const text = new IText('Enter text', {
+        const text = new Textbox('Enter text', {
             left: 100,
             top: 100,
             fontFamily: 'Inter',
             fill: '#000000',
             fontSize: 20,
-            lockUniScaling: true,
+            width: 200,
+            splitByGrapheme: true,
+            lockScalingY: true,
+            lockScalingX: true,
         });
 
         text.setControlsVisibility({
             mt: false,
             mb: false,
-            ml: false,
-            mr: false,
-            bl: true,
-            br: true,
-            tl: true,
-            tr: true,
+            ml: true,
+            mr: true,
+            bl: false,
+            br: false,
+            tl: false,
+            tr: false,
             mtr: true,
         });
 

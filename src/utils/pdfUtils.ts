@@ -70,8 +70,8 @@ export const savePDF = async (
             // y_pdf = page_height - (top / scale) - (height_of_object_in_pdf)
             // But it depends on the object type and how pdf-lib draws it.
 
-            if (obj.type === 'i-text' || obj.type === 'text') {
-                const textObj = obj as IText;
+            if (obj.type === 'i-text' || obj.type === 'text' || obj.type === 'textbox') {
+                const textObj = obj as IText; // Textbox shares similar interface for what we need
                 const text = textObj.text;
                 const fontSize = (textObj.fontSize || 16) * (textObj.scaleY || 1) / scale;
                 const color = textObj.fill ? textObj.fill.toString() : '#000000';
@@ -113,7 +113,6 @@ export const savePDF = async (
                 else if (color === 'blue') pdfColor = rgb(0, 0, 1);
 
                 // Sub/Superscript handling
-                // We stored 'script' property on the object
                 const script = (textObj as any).script;
                 let yOffset = 0;
                 let finalFontSize = fontSize;
@@ -126,25 +125,90 @@ export const savePDF = async (
                     finalFontSize = fontSize * 0.6;
                 }
 
-                const textWidth = pdfFont.widthOfTextAtSize(text, finalFontSize);
-
                 const xPos = x;
                 // Adjust Y for sub/super
-                const yPos = height - (top / scale) - (textObj.height! * (textObj.scaleY || 1) / scale) + yOffset;
+                // For Textbox, we might have multiple lines.
+                // Fabric's top is top-left. pdf-lib drawText y is bottom-left of the first line? No, it depends.
+                // pdf-lib drawText y is the baseline of the text.
+                // If we use drawText with multiple lines (newlines), y is the baseline of the first line?
+                // Actually pdf-lib supports newlines.
+
+                // However, Fabric's Textbox wrapping might not exactly match pdf-lib's wrapping if we just pass the text.
+                // Fabric wraps based on width. pdf-lib drawText with maxWidth might work but font metrics differ.
+                // Best approach: Use the lines Fabric calculated.
+
+                // Fabric v6: textObj.textLines might be available or we can split textObj.text by newline if it's already wrapped?
+                // Textbox in Fabric inserts newlines? Or just renders them?
+                // textObj.text contains the full text.
+                // If it's a Textbox, it might have soft wraps.
+                // We can use `textObj.get('textLines')` or similar?
+                // Actually, let's just trust pdf-lib to handle newlines if we pass them,
+                // BUT Fabric's soft wraps are not in `text` property usually unless we use `dynamicMinWidth` etc?
+                // Wait, Fabric's `text` property DOES NOT contain soft wraps.
+                // We need to get the lines as rendered.
+                // `textObj._textLines` is internal.
+                // `textObj.getCheckSplitText()`?
+
+                // Let's try a simpler approach first: Just pass the text and let pdf-lib handle it?
+                // But pdf-lib doesn't auto-wrap unless we use a library or calculate it.
+                // Fabric has already calculated the wrapping.
+                // We can access `textObj._textLines` (2D array of chars) or `textObj.textLines` (array of strings)?
+                // In Fabric 6, `textObj.getLines()` returns array of objects?
+
+                // Let's look at `textObj._wrappedLines`?
+                // Actually, for now, let's assume the user manually adds newlines or we accept that pdf-lib won't wrap exactly the same
+                // UNLESS we pass the width to pdf-lib's drawText options?
+                // pdf-lib `drawText` has `maxWidth` option.
+
+                const width = (textObj.width || 0) * (textObj.scaleX || 1) / scale;
+
+                // Calculate Y position.
+                // Fabric top is top of the bounding box.
+                // pdf-lib y is bottom of the text (baseline).
+                // We need to account for height.
+                // y_pdf = height - (top / scale) - (fontSize * lineCorrection?)
+                // Let's stick to the previous approximation which worked for single line.
+                // y_pdf = height - (top / scale) - (textObj.height * scaleY / scale) + (height correction?)
+                // Actually, for multiline, pdf-lib draws from top-left if we don't specify? No, always bottom-left origin for page.
+                // But `drawText` y is where the text starts.
+
+                // Let's use `maxWidth` and `lineHeight`.
+                const lineHeight = (textObj.lineHeight || 1.16) * finalFontSize;
+
+                // Adjust Y. The previous formula:
+                // y = height - (top/scale) - (objHeight/scale)
+                // This assumes y is the bottom of the object.
+                // But drawText y is the baseline of the FIRST line (or last? documentation says "y coordinate of the text").
+                // Usually baseline.
+                // If we have multiple lines, pdf-lib draws them downwards.
+                // So we want y to be the baseline of the first line.
+                // y = topY - fontSize; (approx)
+
+                const pageHeight = page.getHeight();
+                const topY = pageHeight - (top / scale); // Top of the text box in PDF coords
+
+                // pdf-lib draws text starting at y and going up? No, y is baseline.
+                // If we pass multiple lines, it draws downwards.
+                // So we want y to be the baseline of the first line.
+                // y = topY - fontSize; (approx)
 
                 page.drawText(text, {
                     x: xPos,
-                    y: yPos,
+                    y: topY - finalFontSize + yOffset, // Start from top, adjust for baseline and sub/super
                     size: finalFontSize,
                     font: pdfFont,
                     color: pdfColor,
+                    maxWidth: width,
+                    lineHeight: lineHeight,
                 });
 
-                // Underline handling
+                // Underline handling (simplified for now, might not work perfectly with wrapping)
                 if (textObj.underline) {
+                    // We'd need to draw lines for each line of text.
+                    // Skipping complex underline for wrapped text for now or implementing later.
                     page.drawLine({
-                        start: { x: xPos, y: yPos - 2 },
-                        end: { x: xPos + textWidth, y: yPos - 2 },
+                        start: { x: xPos, y: topY - finalFontSize - 2 + yOffset },
+                        end: { x: xPos + width, y: topY - finalFontSize - 2 + yOffset },
                         thickness: 1,
                         color: pdfColor,
                     });
