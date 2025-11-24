@@ -14,6 +14,7 @@ export const PDFEditor: React.FC = () => {
     const [fabricCanvases, setFabricCanvases] = useState<{ [key: number]: Canvas }>({});
     const [activePageIndex, setActivePageIndex] = useState<number>(0);
     const [activeObject, setActiveObject] = useState<any>(null);
+    const [originalFileName, setOriginalFileName] = useState<string>('document.pdf');
 
     // History Management
     const undoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
@@ -97,6 +98,7 @@ export const PDFEditor: React.FC = () => {
 
     const handleFileSelect = async (file: File) => {
         try {
+            setOriginalFileName(file.name);
             const arrayBuffer = await file.arrayBuffer();
             setOriginalPdfBytes(arrayBuffer);
 
@@ -341,7 +343,7 @@ export const PDFEditor: React.FC = () => {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'modified_document.pdf';
+            link.download = originalFileName;
             link.click();
         } catch (error) {
             console.error("Error saving PDF:", error);
