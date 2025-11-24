@@ -370,8 +370,8 @@ export const PDFEditor: React.FC = () => {
                         activeObject={activeObject}
                         onUpdateObject={handleUpdateObject}
                         onDeleteObject={handleDeleteObject}
+                        onClose={() => setPdfDocument(null)}
                     />
-                    <button className="btn btn-outline" onClick={() => setPdfDocument(null)}>Close</button>
                 </div>
             </header>
 

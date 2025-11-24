@@ -16,12 +16,17 @@
 }
 
 .header-content {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     gap: 2rem;
+}
+
+.header-content h1 {
+    white-space: nowrap;
+    margin: 0;
 }
 
 .editor-main {

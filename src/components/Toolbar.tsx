@@ -9,6 +9,7 @@ interface ToolbarProps {
     activeObject: any; // Using any for simplicity, ideally FabricObject
     onUpdateObject: (key: string, value: any) => void;
     onDeleteObject: () => void;
+    onClose: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -17,7 +18,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     onSave,
     activeObject,
     onUpdateObject,
-    onDeleteObject
+    onDeleteObject,
+    onClose
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -145,6 +147,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <button className="btn btn-primary toolbar-btn" onClick={onSave} title="Save PDF">
                 <Download size={20} />
                 <span>Save PDF</span>
+            </button>
+
+            <button className="btn btn-outline toolbar-btn" onClick={onClose} title="Close">
+                <span>Close</span>
             </button>
         </div>
     );
