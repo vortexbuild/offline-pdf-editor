@@ -15,6 +15,7 @@ export const PDFEditor: React.FC = () => {
     const [activePageIndex, setActivePageIndex] = useState<number>(0);
     const [activeObject, setActiveObject] = useState<any>(null);
     const [originalFileName, setOriginalFileName] = useState<string>('document.pdf');
+    const lastMousePos = React.useRef<{ x: number, y: number }>({ x: 100, y: 100 });
 
     // History Management
     const undoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
@@ -138,6 +139,13 @@ export const PDFEditor: React.FC = () => {
 
         canvas.on('selection:cleared', () => {
             setActiveObject(null);
+        });
+
+        // Track mouse position
+        canvas.on('mouse:move', (e) => {
+            if (e.pointer) {
+                lastMousePos.current = { x: e.pointer.x, y: e.pointer.y };
+            }
         });
 
         // Capture state for history
@@ -284,8 +292,8 @@ export const PDFEditor: React.FC = () => {
         if (!canvas) return;
 
         const text = new Textbox('Enter text', {
-            left: 100,
-            top: 100,
+            left: lastMousePos.current.x,
+            top: lastMousePos.current.y,
             fontFamily: 'Helvetica',
             fill: '#000000',
             fontSize: 14,
@@ -321,10 +329,11 @@ export const PDFEditor: React.FC = () => {
         reader.onload = async (e) => {
             if (e.target?.result) {
                 const img = await FabricImage.fromURL(e.target.result as string);
-                img.scaleToWidth(200);
                 img.set({
-                    left: 100,
-                    top: 100,
+                    left: lastMousePos.current.x,
+                    top: lastMousePos.current.y,
+                    scaleX: 0.3,
+                    scaleY: 0.3,
                 });
                 canvas.add(img);
                 canvas.setActiveObject(img);
