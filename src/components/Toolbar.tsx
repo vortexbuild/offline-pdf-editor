@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Type, PenTool, Download, Trash2, Bold, Italic, Underline, Superscript, Subscript } from 'lucide-react';
+import { Type, PenTool, Download, Trash2, Bold, Italic, Underline, Superscript, Subscript, X } from 'lucide-react';
 import './Toolbar.css';
 
 interface ToolbarProps {
@@ -143,13 +143,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
             <div className="divider"></div>
 
-            <button className="btn btn-primary toolbar-btn" onClick={onSave} title="Save PDF">
+            <button className="btn btn-primary btn-icon" onClick={onSave} title="Save PDF">
                 <Download size={20} />
-                <span>Save PDF</span>
             </button>
 
-            <button className="btn btn-outline toolbar-btn-icon" onClick={onClose} title="Close">
-                <span>✕</span>
+            <button className="btn btn-danger toolbar-btn-icon" onClick={onClose} title="Close">
+                <X size={20} />
             </button>
         </div>
     );
