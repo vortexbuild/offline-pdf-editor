@@ -142,6 +142,19 @@ export const PDFEditor: React.FC = () => {
             fontFamily: 'Inter',
             fill: '#000000',
             fontSize: 20,
+            lockUniScaling: true,
+        });
+
+        text.setControlsVisibility({
+            mt: false,
+            mb: false,
+            ml: false,
+            mr: false,
+            bl: true,
+            br: true,
+            tl: true,
+            tr: true,
+            mtr: true,
         });
 
         canvas.add(text);
