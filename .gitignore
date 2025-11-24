@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Private files
+src/oauth/
+README_PRIVATE.md
+.env
