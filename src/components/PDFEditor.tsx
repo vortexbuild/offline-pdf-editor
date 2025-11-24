@@ -360,7 +360,10 @@ export const PDFEditor: React.FC = () => {
 
 
     const handleSaveToStorage = async () => {
-        if (!originalPdfBytes || currentPDFId === null) return;
+        if (!originalPdfBytes) {
+            alert('No document to save');
+            return;
+        }
 
         try {
             const modifiedPdfBytes = await savePDF(originalPdfBytes, fabricCanvases, 1.5);
@@ -374,7 +377,22 @@ export const PDFEditor: React.FC = () => {
                     canvasStates[pageIndex] = canvas.toObject(['id', 'selectable', 'lockUniScaling', 'lockScalingX', 'lockScalingY', 'script', 'fontFamily', 'fontSize', 'fill', 'fontWeight', 'fontStyle', 'underline']);
                 }
             });
-            await updatePDFInDB(currentPDFId, modifiedPdfBytes.buffer as ArrayBuffer, canvasStates);
+
+            if (currentPDFId !== null) {
+                // Update existing document
+                await updatePDFInDB(currentPDFId, modifiedPdfBytes.buffer as ArrayBuffer, canvasStates);
+            } else {
+                // Save as new document
+                const newId = await savePDFToDB({
+                    name: originalFileName,
+                    data: originalPdfBytes,
+                    timestamp: Date.now(),
+                    editedData: modifiedPdfBytes.buffer as ArrayBuffer,
+                    canvasStates
+                });
+                setCurrentPDFId(newId);
+            }
+
             setHasUnsavedChanges(false);
             alert('Document saved successfully!');
         } catch (error) {
