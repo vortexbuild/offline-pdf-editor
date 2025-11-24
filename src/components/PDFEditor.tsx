@@ -13,6 +13,7 @@ export const PDFEditor: React.FC = () => {
     const [pages, setPages] = useState<pdfjsLib.PDFPageProxy[]>([]);
     const [fabricCanvases, setFabricCanvases] = useState<{ [key: number]: Canvas }>({});
     const [activePageIndex, setActivePageIndex] = useState<number>(0);
+    const [activeObject, setActiveObject] = useState<any>(null);
 
     const handleFileSelect = async (file: File) => {
         try {
@@ -44,6 +45,30 @@ export const PDFEditor: React.FC = () => {
         canvas.on('mouse:down', () => {
             setActivePageIndex(pageIndex);
         });
+
+        canvas.on('selection:created', (e) => {
+            setActiveObject(e.selected ? e.selected[0] : null);
+        });
+
+        canvas.on('selection:updated', (e) => {
+            setActiveObject(e.selected ? e.selected[0] : null);
+        });
+
+        canvas.on('selection:cleared', () => {
+            setActiveObject(null);
+        });
+    };
+
+    const handleUpdateObject = (key: string, value: any) => {
+        const canvas = fabricCanvases[activePageIndex];
+        if (!canvas) return;
+
+        const activeObj = canvas.getActiveObject();
+        if (!activeObj) return;
+
+        activeObj.set(key, value);
+        canvas.requestRenderAll();
+        setActiveObject({ ...activeObj.toObject(), [key]: value }); // Force re-render
     };
 
     const handleAddText = () => {
@@ -119,6 +144,8 @@ export const PDFEditor: React.FC = () => {
                         onAddText={handleAddText}
                         onAddSignature={handleAddSignature}
                         onSave={handleSave}
+                        activeObject={activeObject}
+                        onUpdateObject={handleUpdateObject}
                     />
                     <button className="btn btn-outline" onClick={() => setPdfDocument(null)}>Close</button>
                 </div>

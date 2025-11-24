@@ -1,73 +1,59 @@
-# React + TypeScript + Vite
+# Offline PDF Editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A secure, offline-first PDF editor built with React, Vite, and Fabric.js. This application allows users to upload PDFs, add text annotations and signatures, and save the modified documents entirely within the browser—no data leaves your device.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+-   **Offline Processing**: All PDF manipulation happens locally in your browser.
+-   **PDF Rendering**: High-fidelity rendering using `pdfjs-dist`.
+-   **Text Annotation**:
+    -   Insert text boxes anywhere on the page.
+    -   **Formatting**: Customize font size and color.
+    -   Drag and drop positioning.
+-   **Signature Support**:
+    -   Upload PNG signatures (transparent backgrounds recommended).
+    -   Resize and position signatures freely.
+-   **Export**: Download the modified PDF with all annotations merged.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+-   **Frontend**: React, TypeScript, Vite
+-   **PDF Handling**: `pdfjs-dist` (rendering), `pdf-lib` (modification/saving)
+-   **Canvas/Interaction**: `fabric` (v6)
+-   **Styling**: Vanilla CSS
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/vortexbuild/offline-pdf-editor.git
+    cd offline-pdf-editor
+    ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+3.  **Run the development server**:
+    ```bash
+    npm run dev
+    ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+4.  **Build for production**:
+    ```bash
+    npm run build
+    ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Usage
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1.  Open the application in your browser.
+2.  Drag and drop a PDF file or click to select one.
+3.  Select a page to edit.
+4.  Use the toolbar to add **Text** or **Signatures**.
+5.  Select text to change its **Font Size** or **Color**.
+6.  Click **Save PDF** to download your changes.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## License
+
+MIT

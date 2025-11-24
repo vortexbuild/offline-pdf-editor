@@ -6,9 +6,17 @@ interface ToolbarProps {
     onAddText: () => void;
     onAddSignature: (file: File) => void;
     onSave: () => void;
+    activeObject: any; // Using any for simplicity, ideally FabricObject
+    onUpdateObject: (key: string, value: any) => void;
 }
 
-export const Toolbar: React.FC<ToolbarProps> = ({ onAddText, onAddSignature, onSave }) => {
+export const Toolbar: React.FC<ToolbarProps> = ({
+    onAddText,
+    onAddSignature,
+    onSave,
+    activeObject,
+    onUpdateObject
+}) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSignatureClick = () => {
@@ -21,6 +29,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onAddText, onAddSignature, onS
             e.target.value = ''; // Reset
         }
     };
+
+    const isText = activeObject && (activeObject.type === 'i-text' || activeObject.type === 'text');
 
     return (
         <div className="toolbar">
@@ -40,6 +50,30 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onAddText, onAddSignature, onS
                 style={{ display: 'none' }}
                 onChange={handleFileChange}
             />
+
+            {isText && (
+                <>
+                    <div className="divider"></div>
+                    <div className="toolbar-group">
+                        <input
+                            type="number"
+                            className="toolbar-input"
+                            value={activeObject.fontSize || 20}
+                            onChange={(e) => onUpdateObject('fontSize', parseInt(e.target.value))}
+                            min={8}
+                            max={72}
+                            title="Font Size"
+                        />
+                        <input
+                            type="color"
+                            className="toolbar-color"
+                            value={activeObject.fill as string || '#000000'}
+                            onChange={(e) => onUpdateObject('fill', e.target.value)}
+                            title="Text Color"
+                        />
+                    </div>
+                </>
+            )}
 
             <div className="divider"></div>
 
