@@ -24,7 +24,8 @@ export const renderPageToCanvas = async (
     const renderContext = {
         canvasContext: canvas.getContext('2d')!,
         viewport: viewport,
-    } as any;
+        canvas: canvas,
+    };
 
     await page.render(renderContext).promise;
 };
@@ -113,7 +114,7 @@ export const savePDF = async (
                 else if (color === 'blue') pdfColor = rgb(0, 0, 1);
 
                 // Sub/Superscript handling
-                const script = (textObj as any).script;
+                const script = (textObj as unknown as { script?: 'super' | 'sub' }).script;
                 let yOffset = 0;
                 let finalFontSize = fontSize;
 

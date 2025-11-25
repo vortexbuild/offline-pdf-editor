@@ -6,8 +6,8 @@ interface ToolbarProps {
     onAddText: () => void;
     onAddSignature: (file: File) => void;
     onSave: () => void;
-    activeObject: any; // Using any for simplicity, ideally FabricObject
-    onUpdateObject: (key: string, value: any) => void;
+    activeObject: Record<string, unknown> | null;
+    onUpdateObject: (key: string, value: string | number | boolean) => void;
     onDeleteObject: () => void;
     onClose: () => void;
     onSaveToStorage: () => void;
@@ -61,7 +61,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <div className="toolbar-group">
                 <select
                     className="toolbar-select"
-                    value={activeObject?.fontFamily || 'Helvetica'}
+                    value={(activeObject?.fontFamily as string) || 'Helvetica'}
                     onChange={(e) => onUpdateObject('fontFamily', e.target.value)}
                     title="Font Family"
                 >
@@ -73,7 +73,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 <input
                     type="number"
                     className="toolbar-input"
-                    value={activeObject?.fontSize || 20}
+                    value={(activeObject?.fontSize as number) || 20}
                     onChange={(e) => {
                         const val = parseInt(e.target.value);
                         if (!isNaN(val)) {

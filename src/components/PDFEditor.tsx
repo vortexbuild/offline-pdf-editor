@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Canvas, FabricImage, Textbox } from 'fabric';
 import { PDFUploader } from './PDFUploader';
@@ -13,29 +13,33 @@ export const PDFEditor: React.FC = () => {
     const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
     const [originalPdfBytes, setOriginalPdfBytes] = useState<ArrayBuffer | null>(null);
     const [pages, setPages] = useState<pdfjsLib.PDFPageProxy[]>([]);
-    const [fabricCanvases, setFabricCanvases] = useState<{ [key: number]: Canvas }>({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [fabricCanvases, setFabricCanvases] = useState<{ [pageIndex: number]: any }>({});
     const [activePageIndex, setActivePageIndex] = useState<number>(0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [activeObject, setActiveObject] = useState<any>(null);
     const [originalFileName, setOriginalFileName] = useState<string>('document.pdf');
-    const lastMousePos = React.useRef<{ x: number, y: number }>({ x: 100, y: 100 });
+    const lastMousePos = useRef<{ x: number, y: number }>({ x: 100, y: 100 });
     const [activeTab, setActiveTab] = useState<'upload' | 'recent'>('upload');
     const [currentPDFId, setCurrentPDFId] = useState<number | null>(null);
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
 
     // History Management
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const undoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const redoStack = React.useRef<{ pageIndex: number, json: any }[]>([]);
 
-    const saveState = (pageIndex: number) => {
+    const saveState = React.useCallback((pageIndex: number) => {
         const canvas = fabricCanvases[pageIndex];
         if (!canvas) return;
 
         const json = canvas.toObject(['id', 'selectable', 'lockUniScaling', 'lockScalingX', 'lockScalingY', 'script', 'fontFamily', 'fontSize', 'fill', 'fontWeight', 'fontStyle', 'underline']);
         undoStack.current.push({ pageIndex, json });
         redoStack.current = []; // Clear redo stack on new action
-    };
+    }, [fabricCanvases]);
 
-    const handleUndo = () => {
+    const handleUndo = React.useCallback(() => {
         if (undoStack.current.length === 0) return;
         const lastState = undoStack.current.pop();
         if (!lastState) return;
@@ -53,9 +57,9 @@ export const PDFEditor: React.FC = () => {
             // But we might lose active object selection
             setActiveObject(null);
         });
-    };
+    }, [fabricCanvases]);
 
-    const handleRedo = () => {
+    const handleRedo = React.useCallback(() => {
         if (redoStack.current.length === 0) return;
         const nextState = redoStack.current.pop();
         if (!nextState) return;
@@ -71,7 +75,21 @@ export const PDFEditor: React.FC = () => {
             canvas.requestRenderAll();
             setActiveObject(null);
         });
-    };
+    }, [fabricCanvases]);
+
+    const handleDeleteObject = React.useCallback(() => {
+        saveState(activePageIndex); // Save before delete
+        const canvas = fabricCanvases[activePageIndex];
+        if (!canvas) return;
+
+        const activeObj = canvas.getActiveObject();
+        if (!activeObj) return;
+
+        canvas.remove(activeObj);
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        setActiveObject(null);
+    }, [fabricCanvases, activePageIndex, saveState]);
 
     // Keyboard Shortcuts
     React.useEffect(() => {
@@ -100,7 +118,7 @@ export const PDFEditor: React.FC = () => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [fabricCanvases, activePageIndex]); // Re-bind when canvases change to ensure we have latest refs
+    }, [fabricCanvases, activePageIndex, handleUndo, handleRedo, handleDeleteObject]);
 
     const handleFileSelect = async (file: File) => {
         try {
@@ -207,8 +225,8 @@ export const PDFEditor: React.FC = () => {
         // Also need to handle 'text:editing:entered' -> save state?
         // 'text:changed' -> save state?
 
-    }, []);
-
+    }, [saveState]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleUpdateObject = (key: string, value: any) => {
         saveState(activePageIndex); // Save before update
 
@@ -263,27 +281,14 @@ export const PDFEditor: React.FC = () => {
 
         canvas.requestRenderAll();
         // Ensure type is preserved and merge with existing state to be safe
-        setActiveObject((prev: any) => ({
+        setActiveObject((prev: Record<string, unknown> | null) => ({
             ...prev,
             ...activeObj.toObject(),
-            script: (activeObj as any).script,
+            script: (activeObj as unknown as { script?: string }).script,
             type: activeObj.type // Explicitly ensure type is present
         }));
     };
 
-    const handleDeleteObject = () => {
-        saveState(activePageIndex); // Save before delete
-        const canvas = fabricCanvases[activePageIndex];
-        if (!canvas) return;
-
-        const activeObj = canvas.getActiveObject();
-        if (!activeObj) return;
-
-        canvas.remove(activeObj);
-        canvas.discardActiveObject();
-        canvas.requestRenderAll();
-        setActiveObject(null);
-    };
 
     const handleAddText = () => {
         saveState(activePageIndex); // Save before add
@@ -355,7 +360,7 @@ export const PDFEditor: React.FC = () => {
             const modifiedPdfBytes = await savePDF(originalPdfBytes, fabricCanvases, 1.5);
 
             // Collect all canvas states
-            const canvasStates: { [pageIndex: number]: any } = {};
+            const canvasStates: Record<number, Record<string, unknown>> = {};
             Object.keys(fabricCanvases).forEach(key => {
                 const pageIndex = parseInt(key);
                 const canvas = fabricCanvases[pageIndex];
@@ -420,7 +425,7 @@ export const PDFEditor: React.FC = () => {
             // Update IndexedDB with edited version and canvas states
             if (currentPDFId !== null) {
                 // Collect all canvas states
-                const canvasStates: { [pageIndex: number]: any } = {};
+                const canvasStates: Record<number, Record<string, unknown>> = {};
                 Object.keys(fabricCanvases).forEach(key => {
                     const pageIndex = parseInt(key);
                     const canvas = fabricCanvases[pageIndex];
@@ -431,7 +436,7 @@ export const PDFEditor: React.FC = () => {
                 await updatePDFInDB(currentPDFId, modifiedPdfBytes.buffer as ArrayBuffer, canvasStates);
             }
 
-            const blob = new Blob([modifiedPdfBytes as any], { type: 'application/pdf' });
+            const blob = new Blob([modifiedPdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
